@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 1 of 15 (architecture + project setup). See the
+**Build status:** Phase 2 of 15 (database + Prisma). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -24,14 +24,14 @@ lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
 ```
 client/   React web app
-server/   Express REST API (+ prisma/ from Phase 2)
+server/   Express REST API; prisma/ holds the schema, migrations and seed
 shared/   Brand, error codes and API contracts used by both sides
 docs/     Architecture and design documentation
 ```
 
 ## Quick start (local development)
 
-Requirements: Node.js ≥ 22.12, npm ≥ 10, Docker (for PostgreSQL from Phase 2 onward).
+Requirements: Node.js ≥ 22.12, npm ≥ 10, Docker (or a local PostgreSQL 16).
 
 ```bash
 cp .env.example .env
@@ -39,6 +39,10 @@ cp .env.example .env
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 npm install
+docker compose up -d postgres                 # dev database on :5432
+docker compose --profile test up -d postgres-test   # test database on :5433
+npm run db:migrate:deploy                     # apply migrations
+npm run db:seed                               # demo data (idempotent)
 npm run dev          # shared (watch) + API on :4000 + web on :5173
 ```
 
@@ -51,7 +55,9 @@ cp .env.example .env   # set JWT_SECRET — production mode refuses the placehol
 docker compose up --build
 ```
 
-Web: http://localhost:8080 (nginx serves the SPA and proxies `/api` to the server).
+Web: http://localhost:8080 (nginx serves the SPA and proxies `/api` to the server). The
+`migrate` service applies migrations before the API starts. Load demo data with
+`docker compose run --rm migrate npm run db:seed`.
 
 ## Scripts (repo root)
 
@@ -73,6 +79,11 @@ Web: http://localhost:8080 (nginx serves the SPA and proxies `/api` to the serve
 
 Every response uses the envelope `{ "success": true, "data": … }` or
 `{ "success": false, "error": { "code", "message", "requestId" } }`.
+
+## Database
+
+See [docs/database.md](docs/database.md) for the schema, the treasury model and the integrity
+rules the database enforces (append-only ledger, balance = sum of ledger, and more).
 
 ## Environment variables
 

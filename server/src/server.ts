@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { disconnectDatabase } from './config/database.js';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 
@@ -16,11 +17,12 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 function shutdown(signal: NodeJS.Signals): void {
   logger.info({ signal }, 'Shutting down gracefully');
   server.close((err) => {
-    if (err) {
-      logger.error({ err }, 'Error during shutdown');
-      process.exit(1);
-    }
-    process.exit(0);
+    disconnectDatabase()
+      .catch((dbErr: unknown) => logger.error({ err: dbErr }, 'Error closing database pool'))
+      .finally(() => {
+        if (err) logger.error({ err }, 'Error during shutdown');
+        process.exit(err ? 1 : 0);
+      });
   });
   // Force-exit if open connections refuse to drain.
   setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();

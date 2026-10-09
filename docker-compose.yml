@@ -2,6 +2,7 @@
 #   docker compose up --build              → db + api + web (http://localhost:8080)
 #   docker compose up -d postgres          → database only, for `npm run dev`
 #   docker compose --profile test up -d    → adds the throwaway test database
+#   docker compose run --rm migrate npm run db:seed   → load demo data
 
 name: kespay
 
@@ -41,10 +42,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # Applies pending migrations, then exits. The API starts only after it succeeds.
+  migrate:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: migrate
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kespay}:${POSTGRES_PASSWORD:-kespay_dev_password}@postgres:5432/${POSTGRES_DB:-kespay}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   server:
     build:
       context: .
       dockerfile: server/Dockerfile
+      target: runtime
     restart: unless-stopped
     env_file: .env
     environment:
@@ -54,8 +69,8 @@ services:
       CLIENT_URL: http://localhost:8080
       TRUST_PROXY: 1
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - '4000:4000'
 

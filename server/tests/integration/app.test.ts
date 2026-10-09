@@ -7,12 +7,16 @@ const app = createApp();
 const ALLOWED_ORIGIN = 'http://localhost:5173';
 
 describe('system endpoints', () => {
-  it('GET /api/health reports ok and demo mode', async () => {
+  it('GET /api/health reports ok, demo mode and a reachable database', async () => {
     const res = await request(app).get('/api/health');
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data).toMatchObject({ status: 'ok', demoMode: true, checks: { api: 'ok' } });
+    expect(res.body.data).toMatchObject({
+      status: 'ok',
+      demoMode: true,
+      checks: { api: 'ok', database: 'ok' },
+    });
   });
 
   it('GET /api/config/public exposes only non-secret configuration', async () => {

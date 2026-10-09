@@ -1,0 +1,539 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// KESPAY data model — DEMO MODE, NO REAL MONEY.
+//
+// Conventions
+//  • UUID primary keys, snake_case tables/columns via @map/@@map.
+//  • Money is NUMERIC(18,2) (Prisma Decimal) — never floating point.
+//  • Timestamps are timestamptz(3), stored in UTC.
+//  • The ledger (transactions + ledger_entries) is append-only. Wallet.balance
+//    is a cached projection kept equal to SUM(ledger) by a deferred DB trigger.
+//  • Integrity rules Prisma cannot express (CHECKs, partial unique indexes,
+//    immutability triggers) live in the SQL of the migrations.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  BUSINESS
+  ADMIN
+  SYSTEM
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum WalletType {
+  PERSONAL
+  BUSINESS
+  TREASURY
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+}
+
+enum TransactionType {
+  TRANSFER
+  REQUEST_PAYMENT
+  SPLIT_PAYMENT
+  BUSINESS_PAYMENT
+  FUNDING
+  ADJUSTMENT
+  REVERSAL
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum EntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum Visibility {
+  PRIVATE
+  FRIENDS
+}
+
+enum PaymentRequestStatus {
+  PENDING
+  PAID
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+enum BillSplitStatus {
+  OPEN
+  SETTLED
+  CANCELLED
+}
+
+enum SplitMethod {
+  EQUAL
+  CUSTOM
+}
+
+enum ParticipantStatus {
+  PENDING
+  PAID
+  DECLINED
+  SETTLED_SELF
+  CANCELLED
+}
+
+enum BusinessCategory {
+  RETAIL
+  FOOD_AND_DRINK
+  SERVICES
+  TRANSPORT
+  HEALTH
+  EDUCATION
+  ENTERTAINMENT
+  AGRICULTURE
+  TECHNOLOGY
+  OTHER
+}
+
+enum QrType {
+  STATIC
+  DYNAMIC
+}
+
+enum NotificationType {
+  MONEY_RECEIVED
+  MONEY_SENT
+  REQUEST_RECEIVED
+  REQUEST_PAID
+  REQUEST_DECLINED
+  REQUEST_CANCELLED
+  REQUEST_EXPIRED
+  SPLIT_CREATED
+  SECURITY
+  SYSTEM
+}
+
+enum OtpPurpose {
+  PHONE_VERIFY
+  LOGIN
+  PIN_RESET
+}
+
+enum IdempotencyStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ── Identity ─────────────────────────────────────────────────────────────────
+
+model User {
+  id                String     @id @default(uuid()) @db.Uuid
+  fullName          String     @map("full_name") @db.VarChar(100)
+  /// Lowercase, without the leading "@". Shared namespace for people and businesses.
+  username          String     @unique @db.VarChar(20)
+  /// Lowercased before storage.
+  email             String     @unique @db.VarChar(254)
+  /// E.164 Kenyan mobile number (+2547XXXXXXXX / +2541XXXXXXXX). Null only for the SYSTEM account.
+  phone             String?    @unique @db.VarChar(13)
+  /// argon2id. Null only for the SYSTEM account, which can never sign in.
+  passwordHash      String?    @map("password_hash")
+  /// argon2id transaction PIN. Null for ADMIN and SYSTEM, who never move money.
+  pinHash           String?    @map("pin_hash")
+  role              Role       @default(USER)
+  status            UserStatus @default(ACTIVE)
+  avatarUrl         String?    @map("avatar_url") @db.VarChar(500)
+  isDemo            Boolean    @default(true) @map("is_demo")
+  /// Default audience for this user's new transactions in the activity feed.
+  defaultVisibility Visibility @default(PRIVATE) @map("default_visibility")
+
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(3)
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
+
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
+  failedPinCount   Int       @default(0) @map("failed_pin_count")
+  pinLockedUntil   DateTime? @map("pin_locked_until") @db.Timestamptz(3)
+  /// Bumped on suspension / password change to invalidate outstanding access tokens.
+  tokenVersion     Int       @default(0) @map("token_version")
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
+  suspendedAt      DateTime? @map("suspended_at") @db.Timestamptz(3)
+  suspendedReason  String?   @map("suspended_reason") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  wallet             Wallet?
+  businessProfile    BusinessProfile?
+  sessions           Session[]
+  otpChallenges      OtpChallenge[]
+  qrCodes            QrCode[]
+  notifications      Notification[]
+  contacts           Contact[]         @relation("ContactOwner")
+  contactOf          Contact[]         @relation("ContactTarget")
+  initiatedTxns      Transaction[]     @relation("TransactionInitiator")
+  requestsMade       PaymentRequest[]  @relation("RequestRequester")
+  requestsReceived   PaymentRequest[]  @relation("RequestPayer")
+  billSplitsCreated  BillSplit[]
+  billParticipations BillParticipant[]
+  auditLogs          AuditLog[]
+  idempotencyKeys    IdempotencyKey[]
+
+  @@index([role, status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Session {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  /// All rotations of one login share a family; reuse of a rotated token revokes the family.
+  familyId              String    @map("family_id") @db.Uuid
+  /// SHA-256 of the opaque refresh token. The token itself is never stored.
+  refreshTokenHash      String    @unique @map("refresh_token_hash") @db.Char(64)
+  deviceFingerprintHash String?   @map("device_fingerprint_hash") @db.Char(64)
+  userAgent             String?   @map("user_agent") @db.VarChar(255)
+  ip                    String?   @db.VarChar(45)
+  expiresAt             DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastUsedAt            DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt             DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedReason         String?   @map("revoked_reason") @db.VarChar(64)
+  replacedById          String?   @unique @map("replaced_by_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy Session? @relation("SessionRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   Session? @relation("SessionRotation")
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Prepared for future SMS/e-mail OTP flows. Not enforced in V1.
+model OtpChallenge {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  purpose     OtpPurpose
+  codeHash    String     @map("code_hash") @db.Char(64)
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5) @map("max_attempts")
+  expiresAt   DateTime   @map("expires_at") @db.Timestamptz(3)
+  consumedAt  DateTime?  @map("consumed_at") @db.Timestamptz(3)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
+  @@map("otp_challenges")
+}
+
+model BusinessProfile {
+  id                 String           @id @default(uuid()) @db.Uuid
+  userId             String           @unique @map("user_id") @db.Uuid
+  businessName       String           @map("business_name") @db.VarChar(120)
+  category           BusinessCategory
+  location           String           @db.VarChar(120)
+  description        String?          @db.VarChar(500)
+  logoUrl            String?          @map("logo_url") @db.VarChar(500)
+  /// Placeholder for a future business registration (BRS) number. Not verified in V1.
+  registrationNumber String?          @map("registration_number") @db.VarChar(40)
+  isVerified         Boolean          @default(false) @map("is_verified")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([category])
+  @@map("business_profiles")
+}
+
+// ── Money ────────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id       String       @id @default(uuid()) @db.Uuid
+  userId   String       @unique @map("user_id") @db.Uuid
+  type     WalletType   @default(PERSONAL)
+  currency String       @default("KES") @db.Char(3)
+  /// Cached projection of the ledger. Changed only by the ledger service, in the
+  /// same DB transaction as the matching ledger entries (enforced by trigger).
+  balance  Decimal      @default(0) @db.Decimal(18, 2)
+  status   WalletStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  outgoing      Transaction[] @relation("TransactionFrom")
+  incoming      Transaction[] @relation("TransactionTo")
+  ledgerEntries LedgerEntry[]
+
+  @@map("wallets")
+}
+
+/// One business event that moves value. Financial columns are immutable;
+/// only status/metadata may change (e.g. future PENDING → COMPLETED provider flows).
+model Transaction {
+  id               String            @id @default(uuid()) @db.Uuid
+  /// Human-facing reference, e.g. TXN-7Q2M9XK4PA.
+  reference        String            @unique @db.VarChar(20)
+  type             TransactionType
+  status           TransactionStatus @default(COMPLETED)
+  amount           Decimal           @db.Decimal(18, 2)
+  currency         String            @default("KES") @db.Char(3)
+  fromWalletId     String            @map("from_wallet_id") @db.Uuid
+  toWalletId       String            @map("to_wallet_id") @db.Uuid
+  initiatorId      String            @map("initiator_id") @db.Uuid
+  note             String?           @db.VarChar(140)
+  visibility       Visibility        @default(PRIVATE)
+  paymentRequestId String?           @unique @map("payment_request_id") @db.Uuid
+  billSplitId      String?           @map("bill_split_id") @db.Uuid
+  qrCodeId         String?           @map("qr_code_id") @db.Uuid
+  /// Payment-provider adapter that settled this transaction ("demo" in V1).
+  provider         String            @default("demo") @db.VarChar(32)
+  providerRef      String?           @map("provider_ref") @db.VarChar(100)
+  reversalOfId     String?           @unique @map("reversal_of_id") @db.Uuid
+  metadata         Json?
+  completedAt      DateTime?         @map("completed_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  fromWallet     Wallet          @relation("TransactionFrom", fields: [fromWalletId], references: [id], onDelete: Restrict)
+  toWallet       Wallet          @relation("TransactionTo", fields: [toWalletId], references: [id], onDelete: Restrict)
+  initiator      User            @relation("TransactionInitiator", fields: [initiatorId], references: [id], onDelete: Restrict)
+  paymentRequest PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: Restrict)
+  billSplit      BillSplit?      @relation(fields: [billSplitId], references: [id], onDelete: Restrict)
+  qrCode         QrCode?         @relation(fields: [qrCodeId], references: [id], onDelete: Restrict)
+  reversalOf     Transaction?    @relation("Reversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversedBy     Transaction?    @relation("Reversal")
+  ledgerEntries  LedgerEntry[]
+
+  @@index([fromWalletId, createdAt(sort: Desc)])
+  @@index([toWalletId, createdAt(sort: Desc)])
+  @@index([initiatorId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+  @@index([billSplitId])
+  @@index([provider, providerRef])
+  @@map("transactions")
+}
+
+/// Double-entry line. Append-only: UPDATE and DELETE are rejected by trigger.
+model LedgerEntry {
+  id            String         @id @default(uuid()) @db.Uuid
+  transactionId String         @map("transaction_id") @db.Uuid
+  walletId      String         @map("wallet_id") @db.Uuid
+  direction     EntryDirection
+  /// Always positive; `direction` gives the sign.
+  amount        Decimal        @db.Decimal(18, 2)
+  balanceAfter  Decimal        @map("balance_after") @db.Decimal(18, 2)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  wallet      Wallet      @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@unique([transactionId, walletId])
+  @@index([walletId, createdAt(sort: Desc)])
+  @@map("ledger_entries")
+}
+
+/// Stored responses for `Idempotency-Key` replay on money-moving endpoints.
+model IdempotencyKey {
+  id            String            @id @default(uuid()) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  key           String            @db.VarChar(100)
+  endpoint      String            @db.VarChar(100)
+  /// SHA-256 of method + path + canonical body; detects key reuse with a different payload.
+  requestHash   String            @map("request_hash") @db.Char(64)
+  status        IdempotencyStatus @default(IN_PROGRESS)
+  responseCode  Int?              @map("response_code")
+  responseBody  Json?             @map("response_body")
+  transactionId String?           @map("transaction_id") @db.Uuid
+  expiresAt     DateTime          @map("expires_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ── Requests & bill splits ───────────────────────────────────────────────────
+
+model PaymentRequest {
+  id                String               @id @default(uuid()) @db.Uuid
+  requesterId       String               @map("requester_id") @db.Uuid
+  payerId           String               @map("payer_id") @db.Uuid
+  amount            Decimal              @db.Decimal(18, 2)
+  currency          String               @default("KES") @db.Char(3)
+  note              String?              @db.VarChar(140)
+  status            PaymentRequestStatus @default(PENDING)
+  expiresAt         DateTime             @map("expires_at") @db.Timestamptz(3)
+  respondedAt       DateTime?            @map("responded_at") @db.Timestamptz(3)
+  billParticipantId String?              @unique @map("bill_participant_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  requester       User             @relation("RequestRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  payer           User             @relation("RequestPayer", fields: [payerId], references: [id], onDelete: Restrict)
+  billParticipant BillParticipant? @relation(fields: [billParticipantId], references: [id], onDelete: Restrict)
+  transaction     Transaction?
+
+  @@index([payerId, status, createdAt(sort: Desc)])
+  @@index([requesterId, status, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@map("payment_requests")
+}
+
+model BillSplit {
+  id          String          @id @default(uuid()) @db.Uuid
+  creatorId   String          @map("creator_id") @db.Uuid
+  title       String          @db.VarChar(80)
+  note        String?         @db.VarChar(140)
+  totalAmount Decimal         @map("total_amount") @db.Decimal(18, 2)
+  currency    String          @default("KES") @db.Char(3)
+  splitMethod SplitMethod     @map("split_method")
+  status      BillSplitStatus @default(OPEN)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  creator      User              @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  participants BillParticipant[]
+  transactions Transaction[]
+
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@map("bill_splits")
+}
+
+model BillParticipant {
+  id          String            @id @default(uuid()) @db.Uuid
+  billSplitId String            @map("bill_split_id") @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  amountOwed  Decimal           @map("amount_owed") @db.Decimal(18, 2)
+  amountPaid  Decimal           @default(0) @map("amount_paid") @db.Decimal(18, 2)
+  status      ParticipantStatus @default(PENDING)
+  paidAt      DateTime?         @map("paid_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  billSplit      BillSplit       @relation(fields: [billSplitId], references: [id], onDelete: Restrict)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  paymentRequest PaymentRequest?
+
+  @@unique([billSplitId, userId])
+  @@index([userId, status])
+  @@map("bill_participants")
+}
+
+// ── QR, social, notifications, audit ─────────────────────────────────────────
+
+model QrCode {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  /// Opaque, unguessable code embedded in the QR (never a username or phone).
+  code          String    @unique @db.VarChar(32)
+  type          QrType    @default(STATIC)
+  /// Fixed amount for DYNAMIC codes; null means the payer enters the amount.
+  amount        Decimal?  @db.Decimal(18, 2)
+  note          String?   @db.VarChar(140)
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(3)
+  isActive      Boolean   @default(true) @map("is_active")
+  scanCount     Int       @default(0) @map("scan_count")
+  lastScannedAt DateTime? @map("last_scanned_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([userId, isActive])
+  @@map("qr_codes")
+}
+
+/// A saved contact. "Friends" (for the activity feed) are mutual contacts.
+model Contact {
+  id        String  @id @default(uuid()) @db.Uuid
+  ownerId   String  @map("owner_id") @db.Uuid
+  contactId String  @map("contact_id") @db.Uuid
+  nickname  String? @db.VarChar(60)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  owner   User @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  contact User @relation("ContactTarget", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
+  @@index([contactId])
+  @@map("contacts")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(120)
+  body      String           @db.VarChar(500)
+  /// Deep-link payload, e.g. { "transactionRef": "TXN-…" }. Never contains secrets.
+  data      Json?
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+/// Security and financial audit trail. Append-only (enforced by trigger).
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(64)
+  entityType String   @map("entity_type") @db.VarChar(40)
+  entityId   String?  @map("entity_id") @db.VarChar(64)
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+  requestId  String?  @map("request_id") @db.VarChar(64)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
