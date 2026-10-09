@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AmountField } from '@/components/payments/AmountField';
-import { ConfirmTransferDialog } from '@/components/payments/ConfirmTransferDialog';
+import { ConfirmPaymentDialog } from '@/components/payments/ConfirmPaymentDialog';
 import { ProfileRow } from '@/components/payments/ProfileRow';
 import { RecipientPicker } from '@/components/payments/RecipientPicker';
 import { TransferSuccess } from '@/components/payments/TransferSuccess';
@@ -160,7 +160,7 @@ export function SendMoneyPage() {
         onContinue={openConfirm}
       />
       {normalized && (
-        <ConfirmTransferDialog
+        <ConfirmPaymentDialog
           open={confirming}
           recipient={recipient}
           amount={normalized}

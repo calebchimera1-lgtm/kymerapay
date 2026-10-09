@@ -1,6 +1,10 @@
 import {
+  BILL_SPLIT_STATUSES,
   BUSINESS_CATEGORIES,
   normalizeKenyanPhone,
+  PARTICIPANT_STATUSES,
+  PAYMENT_REQUEST_STATUSES,
+  TRANSACTION_TYPES,
   pinSchema,
   passwordSchema,
   registerUserSchema,
@@ -11,8 +15,12 @@ import {
 } from '@app/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  BillSplitStatus,
   BusinessCategory,
+  ParticipantStatus,
+  PaymentRequestStatus,
   Role,
+  TransactionType,
   UserStatus,
   Visibility,
 } from '../../src/generated/prisma/client.js';
@@ -112,6 +120,10 @@ describe('shared enums match the database enums', () => {
     ['UserStatus', USER_STATUSES, UserStatus],
     ['Visibility', VISIBILITIES, Visibility],
     ['BusinessCategory', BUSINESS_CATEGORIES, BusinessCategory],
+    ['TransactionType', TRANSACTION_TYPES, TransactionType],
+    ['PaymentRequestStatus', PAYMENT_REQUEST_STATUSES, PaymentRequestStatus],
+    ['BillSplitStatus', BILL_SPLIT_STATUSES, BillSplitStatus],
+    ['ParticipantStatus', PARTICIPANT_STATUSES, ParticipantStatus],
   ])('%s', (_name, shared, prismaEnum) => {
     expect([...shared].sort()).toEqual(Object.values(prismaEnum).sort());
   });

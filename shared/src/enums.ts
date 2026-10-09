@@ -67,3 +67,28 @@ export type WalletStatus = (typeof WALLET_STATUSES)[number];
 
 export const WALLET_TYPES = ['PERSONAL', 'BUSINESS', 'TREASURY'] as const;
 export type WalletType = (typeof WALLET_TYPES)[number];
+
+export const PAYMENT_REQUEST_STATUSES = [
+  'PENDING',
+  'PAID',
+  'DECLINED',
+  'EXPIRED',
+  'CANCELLED',
+] as const;
+export type PaymentRequestStatus = (typeof PAYMENT_REQUEST_STATUSES)[number];
+
+export const BILL_SPLIT_STATUSES = ['OPEN', 'SETTLED', 'CANCELLED'] as const;
+export type BillSplitStatus = (typeof BILL_SPLIT_STATUSES)[number];
+
+export const SPLIT_METHODS = ['EQUAL', 'CUSTOM'] as const;
+export type SplitMethod = (typeof SPLIT_METHODS)[number];
+
+export const PARTICIPANT_STATUSES = [
+  'PENDING',
+  'PAID',
+  'DECLINED',
+  'SETTLED_SELF',
+  'CANCELLED',
+  'EXPIRED',
+] as const;
+export type ParticipantStatus = (typeof PARTICIPANT_STATUSES)[number];

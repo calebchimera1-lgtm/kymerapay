@@ -9,7 +9,20 @@ import { useRecentRecipients, useUserSearch } from '@/hooks/useTransfers';
 import { toApiClientError } from '@/services/api';
 import { ProfileRow } from './ProfileRow';
 
-export function RecipientPicker({ onSelect }: { onSelect: (profile: PublicProfile) => void }) {
+interface RecipientPickerProps {
+  onSelect: (profile: PublicProfile) => void;
+  /** Hide profiles that can't be chosen here (e.g. businesses when requesting money). */
+  accept?: (profile: PublicProfile) => boolean;
+  placeholder?: string;
+  autoFocus?: boolean;
+}
+
+export function RecipientPicker({
+  onSelect,
+  accept = () => true,
+  placeholder = 'Search @username or name',
+  autoFocus = true,
+}: RecipientPickerProps) {
   const [term, setTerm] = useState('');
   const recent = useRecentRecipients();
   const results = useUserSearch(term);
@@ -24,10 +37,10 @@ export function RecipientPicker({ onSelect }: { onSelect: (profile: PublicProfil
         />
         <input
           type="search"
-          autoFocus
+          autoFocus={autoFocus}
           value={term}
           onChange={(event) => setTerm(event.target.value)}
-          placeholder="Search @username or name"
+          placeholder={placeholder}
           aria-label="Search for a person or business"
           autoCapitalize="none"
           spellCheck={false}
@@ -44,7 +57,7 @@ export function RecipientPicker({ onSelect }: { onSelect: (profile: PublicProfil
               message={toApiClientError(results.error).message}
               onRetry={() => void results.refetch()}
             />
-          ) : results.data.length === 0 ? (
+          ) : results.data.filter(accept).length === 0 ? (
             <EmptyState
               icon={UserX}
               title="No one found"
@@ -52,7 +65,7 @@ export function RecipientPicker({ onSelect }: { onSelect: (profile: PublicProfil
             />
           ) : (
             <ul className="divide-y divide-border rounded-2xl border border-border bg-surface">
-              {results.data.map((profile) => (
+              {results.data.filter(accept).map((profile) => (
                 <li key={profile.id}>
                   <button
                     type="button"
@@ -68,13 +81,13 @@ export function RecipientPicker({ onSelect }: { onSelect: (profile: PublicProfil
         </section>
       ) : (
         recent.data &&
-        recent.data.length > 0 && (
+        recent.data.filter(accept).length > 0 && (
           <section aria-labelledby="recent-heading" className="space-y-3">
             <h2 id="recent-heading" className="text-sm font-semibold text-fg-muted">
               Recent
             </h2>
             <ul className="flex gap-4 overflow-x-auto pb-1">
-              {recent.data.map((profile) => (
+              {recent.data.filter(accept).map((profile) => (
                 <li key={profile.id} className="shrink-0">
                   <button
                     type="button"

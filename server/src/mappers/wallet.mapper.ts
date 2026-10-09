@@ -14,7 +14,11 @@ export function toWalletDto(wallet: Wallet): WalletDto {
   };
 }
 
-type PartyUser = EntryWithTransaction['transaction']['toWallet']['user'];
+/** Any user row selected with `counterpartyUserSelect`. */
+export type PartyUser = Pick<
+  EntryWithTransaction['transaction']['toWallet']['user'],
+  'fullName' | 'username' | 'avatarUrl' | 'role' | 'businessProfile'
+>;
 
 /** Public identity only: never phone numbers, e-mails or balances. */
 export function toCounterparty(user: PartyUser): Counterparty {

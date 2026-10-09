@@ -1,15 +1,8 @@
 import type { DbClient } from '../config/database.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { counterpartyUserSelect } from './selects.js';
 
-const counterpartyUser = {
-  select: {
-    fullName: true,
-    username: true,
-    avatarUrl: true,
-    role: true,
-    businessProfile: { select: { businessName: true, logoUrl: true } },
-  },
-} as const;
+const counterpartyUser = { select: counterpartyUserSelect } as const;
 
 const entryInclude = {
   transaction: {

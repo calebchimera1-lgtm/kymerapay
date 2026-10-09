@@ -1,15 +1,17 @@
-import { ERROR_CODES, formatMoney, type PublicProfile } from '@app/shared';
+import { ERROR_CODES, formatMoney } from '@app/shared';
 import { ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import { FormAlert } from '@/components/feedback/FormAlert';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import type { ApiClientError } from '@/services/api';
-import { ProfileRow } from './ProfileRow';
+import { ProfileRow, type ProfileLike } from './ProfileRow';
 
-interface ConfirmTransferDialogProps {
+interface ConfirmPaymentDialogProps {
   open: boolean;
-  recipient: PublicProfile;
+  recipient: ProfileLike;
+  /** Defaults to "Send KSh X to @user?". */
+  title?: string;
   amount: string;
   note: string;
   pending: boolean;
@@ -21,16 +23,17 @@ interface ConfirmTransferDialogProps {
 const PIN_ERRORS: ReadonlySet<string> = new Set([ERROR_CODES.INVALID_PIN, ERROR_CODES.PIN_LOCKED]);
 
 /** "Send KSh 1,500.00 to @john254?" — the last step before money moves. Requires the PIN. */
-export function ConfirmTransferDialog({
+export function ConfirmPaymentDialog({
   open,
   recipient,
+  title,
   amount,
   note,
   pending,
   error,
   onCancel,
   onConfirm,
-}: ConfirmTransferDialogProps) {
+}: ConfirmPaymentDialogProps) {
   const [pin, setPin] = useState('');
   const pinId = useId();
   const pinErrorId = useId();
@@ -47,7 +50,7 @@ export function ConfirmTransferDialog({
       open={open}
       onClose={cancel}
       dismissible={!pending}
-      title={`Send ${formatMoney(amount)} to @${recipient.username}?`}
+      title={title ?? `Send ${formatMoney(amount)} to @${recipient.username}?`}
       description="Simulated money only — no real funds move."
     >
       <form

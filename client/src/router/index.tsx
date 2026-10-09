@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
@@ -13,7 +14,20 @@ import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WelcomePage } from '@/pages/public/WelcomePage';
 import { WalletPage } from '@/pages/wallet/WalletPage';
 import { SendMoneyPage } from '@/pages/send/SendMoneyPage';
+import { NewRequestPage } from '@/pages/requests/NewRequestPage';
+import { RequestsPage } from '@/pages/requests/RequestsPage';
+import { NewSplitPage } from '@/pages/split/NewSplitPage';
+import { SplitDetailPage } from '@/pages/split/SplitDetailPage';
+import { SplitListPage } from '@/pages/split/SplitListPage';
 import { GuestOnly, RequireAuth } from './guards';
+
+/** Personal-account pages, each behind the USER role guard. */
+function userRoutes(entries: [path: string, element: ReactElement][]) {
+  return entries.map(([path, element]) => ({
+    path,
+    element: <RequireAuth roles={['USER']}>{element}</RequireAuth>,
+  }));
+}
 
 export const router = createBrowserRouter([
   {
@@ -57,14 +71,14 @@ export const router = createBrowserRouter([
               </RequireAuth>
             ),
           },
-          {
-            path: 'app/send',
-            element: (
-              <RequireAuth roles={['USER']}>
-                <SendMoneyPage />
-              </RequireAuth>
-            ),
-          },
+          ...userRoutes([
+            ['app/send', <SendMoneyPage />],
+            ['app/requests', <RequestsPage />],
+            ['app/requests/new', <NewRequestPage />],
+            ['app/split', <SplitListPage />],
+            ['app/split/new', <NewSplitPage />],
+            ['app/split/:id', <SplitDetailPage />],
+          ]),
           {
             path: 'business',
             element: (

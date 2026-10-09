@@ -1,4 +1,5 @@
 import { idempotencyRepository } from '../repositories/idempotency.repository.js';
+import { expireOverdueRequests } from '../services/paymentRequest.service.js';
 import { logger } from '../utils/logger.js';
 
 interface Job {
@@ -13,6 +14,14 @@ interface Job {
  * the API runs at scale.
  */
 const JOBS: Job[] = [
+  {
+    name: 'expire-payment-requests',
+    everyMs: 5 * 60 * 1000,
+    run: async () => {
+      const count = await expireOverdueRequests();
+      if (count > 0) logger.info({ count }, 'Expired overdue payment requests');
+    },
+  },
   {
     name: 'purge-expired-idempotency-keys',
     everyMs: 60 * 60 * 1000,

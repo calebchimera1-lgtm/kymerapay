@@ -10,3 +10,6 @@ export * from './wallet.js';
 export * from './validation/common.js';
 export * from './transfer.js';
 export * from './validation/transfer.js';
+export * from './split.js';
+export * from './requests.js';
+export * from './validation/requests.js';

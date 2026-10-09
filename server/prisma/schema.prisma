@@ -99,6 +99,7 @@ enum ParticipantStatus {
   DECLINED
   SETTLED_SELF
   CANCELLED
+  EXPIRED
 }
 
 enum BusinessCategory {

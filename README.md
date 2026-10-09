@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 5 of 15 (send & receive money). See the
+**Build status:** Phase 6 of 15 (payment requests & bill splits). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -101,6 +101,18 @@ wallets (`SELECT … FOR UPDATE`, always in id order so opposite transfers canno
 checks status and balance, then writes one immutable transaction, a DEBIT and a CREDIT ledger
 line and both new balances in a single database transaction. PostgreSQL re-verifies the result at
 commit. Money is `Decimal` on the server and 2-dp strings on the wire — never floating point.
+
+### Requests and bill splits
+
+A payment request is `PENDING` until the payer pays or declines, the requester cancels, or it
+expires (7 days by default; overdue requests read as `EXPIRED` immediately and a background job
+records it). Paying locks the request row for the whole money transaction, so a simultaneous pay
+and decline can never both succeed.
+
+A bill split creates one share per person and a linked payment request for everyone except the
+creator, whose share counts as settled. Equal splits allocate leftover cents to the first shares
+(`1,000 ÷ 3 → 333.34 · 333.33 · 333.33`) — the same shared function runs in the browser preview and
+on the server. A split becomes `SETTLED` when every share is paid.
 
 ### Idempotency
 

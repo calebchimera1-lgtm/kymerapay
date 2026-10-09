@@ -10,7 +10,7 @@ import { cn } from '@/utils/cn';
 /** `to` is set once the feature ships; others render as "coming soon". */
 const QUICK_ACTIONS: { label: string; Icon: typeof ArrowUpRight; to?: string }[] = [
   { label: 'Send', Icon: ArrowUpRight, to: '/app/send' },
-  { label: 'Request', Icon: ArrowDownLeft },
+  { label: 'Request', Icon: ArrowDownLeft, to: '/app/requests/new' },
   { label: 'Scan', Icon: ScanLine },
   { label: 'Pay', Icon: QrCode },
 ];
