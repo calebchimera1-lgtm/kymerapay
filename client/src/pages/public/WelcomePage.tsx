@@ -109,9 +109,9 @@ function PreviewWalletCard() {
   return (
     <figure
       aria-label="Example wallet card with sample data"
-      className="relative animate-rise-in overflow-hidden rounded-[1.75rem] bg-primary p-6 text-primary-fg shadow-raised sm:p-8"
+      className="relative animate-rise-in overflow-hidden rounded-[1.75rem] bg-hero p-6 text-hero-fg shadow-raised sm:p-8"
     >
-      <BeadPattern className="text-primary-fg opacity-[0.08]" />
+      <BeadPattern className="text-hero-fg opacity-[0.08]" />
       <div className="relative space-y-8">
         <div className="flex items-start justify-between">
           <div>

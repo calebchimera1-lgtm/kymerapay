@@ -37,3 +37,33 @@ export const BUSINESS_CATEGORY_LABELS: Record<BusinessCategory, string> = {
   TECHNOLOGY: 'Technology',
   OTHER: 'Other',
 };
+
+export const TRANSACTION_TYPES = [
+  'TRANSFER',
+  'REQUEST_PAYMENT',
+  'SPLIT_PAYMENT',
+  'BUSINESS_PAYMENT',
+  'FUNDING',
+  'ADJUSTMENT',
+  'REVERSAL',
+] as const;
+export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+
+export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
+  TRANSFER: 'Transfer',
+  REQUEST_PAYMENT: 'Request payment',
+  SPLIT_PAYMENT: 'Bill split payment',
+  BUSINESS_PAYMENT: 'Business payment',
+  FUNDING: 'Demo funds',
+  ADJUSTMENT: 'Balance adjustment',
+  REVERSAL: 'Reversal',
+};
+
+export const TRANSACTION_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REVERSED'] as const;
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
+export const WALLET_STATUSES = ['ACTIVE', 'FROZEN'] as const;
+export type WalletStatus = (typeof WALLET_STATUSES)[number];
+
+export const WALLET_TYPES = ['PERSONAL', 'BUSINESS', 'TREASURY'] as const;
+export type WalletType = (typeof WALLET_TYPES)[number];

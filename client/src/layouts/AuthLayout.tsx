@@ -11,9 +11,9 @@ export function AuthLayout() {
     <div className="flex min-h-dvh flex-col">
       <DemoBanner />
       <div className="grid flex-1 lg:grid-cols-[1fr_1.1fr]">
-        <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-fg lg:flex lg:flex-col lg:justify-between">
-          <BeadPattern className="text-primary-fg opacity-[0.07]" />
-          <Link to="/" className="relative w-fit rounded-xl text-primary-fg">
+        <aside className="relative hidden overflow-hidden bg-hero p-12 text-hero-fg lg:flex lg:flex-col lg:justify-between">
+          <BeadPattern className="text-hero-fg opacity-[0.07]" />
+          <Link to="/" className="relative w-fit rounded-xl text-hero-fg">
             <Logo />
           </Link>
           <div className="relative max-w-md space-y-4">

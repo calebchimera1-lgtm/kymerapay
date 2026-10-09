@@ -1,5 +1,8 @@
-import { AccountReadyCard } from '@/components/layout/AccountReadyCard';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
+import { BalanceCard } from '@/components/wallet/BalanceCard';
+import { CashflowSummary } from '@/components/wallet/CashflowSummary';
+import { EntryList } from '@/components/wallet/EntryList';
 import { useAuthStore } from '@/store/authStore';
 import { greetingFor } from '@/utils/dates';
 
@@ -11,14 +14,20 @@ export function BusinessDashboardPage() {
         title={`${greetingFor()} 👋`}
         description={user.business?.businessName ?? user.fullName}
       />
-      <AccountReadyCard
-        steps={[
-          { label: 'Business account created', done: true },
-          { label: 'Business wallet opened', done: true },
-          { label: 'Accept QR payments', done: false },
-          { label: 'Sales dashboard & receipts', done: false },
-        ]}
-      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
+        <div className="space-y-6">
+          <BalanceCard showActions={false} />
+          <CashflowSummary />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent payments</CardTitle>
+          </CardHeader>
+          <CardBody className="pt-1">
+            <EntryList limit={10} />
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }

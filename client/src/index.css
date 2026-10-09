@@ -44,8 +44,17 @@
   --demo-bg: #f5b544;
   --demo-fg: #2a1a00;
 
+  /* Brand hero surfaces (balance card, auth panel): white text on deep green in both themes. */
+  --hero-bg: #0f6b4f;
+  --hero-fg: #ffffff;
+
   --ring: #0f6b4f;
   --shadow-color: 30 25 15;
+
+  /* Chart series (validated with the dataviz palette checker against --surface). */
+  --chart-in: #13875e;
+  --chart-out: #c9780c;
+  --chart-grid: #ebe8e1;
 }
 
 .dark {
@@ -81,8 +90,15 @@
   --demo-bg: #f2b656;
   --demo-fg: #2a1a00;
 
+  --hero-bg: #125540;
+  --hero-fg: #f1f7f4;
+
   --ring: #3cc493;
   --shadow-color: 0 0 0;
+
+  --chart-in: #23a06f;
+  --chart-out: #c47f12;
+  --chart-grid: #232a27;
 }
 
 @theme inline {
@@ -120,6 +136,11 @@
   --color-demo-bg: var(--demo-bg);
   --color-demo-fg: var(--demo-fg);
   --color-ring: var(--ring);
+  --color-hero: var(--hero-bg);
+  --color-hero-fg: var(--hero-fg);
+  --color-chart-in: var(--chart-in);
+  --color-chart-out: var(--chart-out);
+  --color-chart-grid: var(--chart-grid);
 
   --radius-card: 1.25rem;
   --shadow-card:

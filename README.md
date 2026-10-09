@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 3 of 15 (authentication). See the
+**Build status:** Phase 4 of 15 (wallet + ledger). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -90,7 +90,24 @@ After `npm run db:seed` (local development only — never reuse these credential
 | @visiblegeneral — VISIBLE GENERAL SUPPLIES LTD      | `visiblegeneral`          | `Demo@2026`  | `1357` |
 | @admin (administrator, no wallet)                   | `admin`                   | `Admin@2026` | —      |
 
-Simulated balances are added with the ledger in Phase 4.
+Opening balances (simulated): Caleb KSh 25,000 · John 10,000 · Brian 7,500 · Mike 5,000 ·
+David 5,000 · Visible General Supplies 50,000. Each is a FUNDING transaction from the treasury.
+
+## The ledger
+
+Every money movement goes through one function, `postTransfer`
+([server/src/services/ledger.service.ts](server/src/services/ledger.service.ts)): it locks both
+wallets (`SELECT … FOR UPDATE`, always in id order so opposite transfers cannot deadlock),
+checks status and balance, then writes one immutable transaction, a DEBIT and a CREDIT ledger
+line and both new balances in a single database transaction. PostgreSQL re-verifies the result at
+commit. Money is `Decimal` on the server and 2-dp strings on the wire — never floating point.
+
+`npm run ledger:check` independently re-derives every balance from the ledger and confirms the
+whole system sums to zero (exit code 1 if not).
+
+Payment rails sit behind a `PaymentProvider` interface
+([server/src/providers/payment](server/src/providers/payment)). V1 registers only the
+`DemoProvider`, which settles simulated money instantly and contacts nothing.
 
 ## Authentication in brief
 

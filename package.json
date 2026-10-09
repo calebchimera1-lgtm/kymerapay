@@ -29,7 +29,8 @@
     "db:migrate:deploy": "npm run db:migrate:deploy -w @app/server",
     "db:reset": "npm run db:reset -w @app/server",
     "db:seed": "npm run db:seed -w @app/server",
-    "db:studio": "npm run db:studio -w @app/server"
+    "db:studio": "npm run db:studio -w @app/server",
+    "ledger:check": "npm run ledger:check -w @app/server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

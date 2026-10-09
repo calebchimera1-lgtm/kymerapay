@@ -1,4 +1,5 @@
 import type { ErrorCode } from './errors.js';
+import type { TransactionLimits } from './wallet.js';
 
 /** A single field-level validation problem. */
 export interface FieldIssue {
@@ -46,4 +47,5 @@ export interface PublicConfig {
   currencySymbol: string;
   timezone: string;
   qrScheme: string;
+  limits: TransactionLimits;
 }

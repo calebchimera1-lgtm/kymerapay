@@ -13,6 +13,7 @@ export const AUDIT_ACTIONS = {
   SESSION_REUSE_DETECTED: 'SESSION_REUSE_DETECTED',
   PIN_FAILED: 'PIN_FAILED',
   PIN_LOCKED: 'PIN_LOCKED',
+  WALLET_FUNDED: 'WALLET_FUNDED',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

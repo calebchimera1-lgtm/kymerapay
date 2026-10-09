@@ -5,7 +5,10 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 
 interface UiState {
   theme: ThemePreference;
+  /** Mask balances on screen (e.g. in public). Purely cosmetic. */
+  hideBalances: boolean;
   setTheme: (theme: ThemePreference) => void;
+  toggleHideBalances: () => void;
 }
 
 /** Persisted UI preferences. The key must match the inline script in index.html. */
@@ -13,7 +16,9 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       theme: 'system',
+      hideBalances: false,
       setTheme: (theme) => set({ theme }),
+      toggleHideBalances: () => set((state) => ({ hideBalances: !state.hideBalances })),
     }),
     {
       name: 'app-ui',

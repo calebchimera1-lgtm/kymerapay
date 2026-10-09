@@ -11,6 +11,7 @@ import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { RouteErrorPage } from '@/pages/errors/RouteErrorPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WelcomePage } from '@/pages/public/WelcomePage';
+import { WalletPage } from '@/pages/wallet/WalletPage';
 import { GuestOnly, RequireAuth } from './guards';
 
 export const router = createBrowserRouter([
@@ -44,6 +45,14 @@ export const router = createBrowserRouter([
             element: (
               <RequireAuth roles={['USER']}>
                 <DashboardPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'app/wallet',
+            element: (
+              <RequireAuth roles={['USER']}>
+                <WalletPage />
               </RequireAuth>
             ),
           },

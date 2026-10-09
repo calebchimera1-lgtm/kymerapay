@@ -11,6 +11,10 @@ const booleanString = z
   .enum(['true', 'false', '1', '0'])
   .transform((value) => value === 'true' || value === '1');
 
+const moneyString = z
+  .string()
+  .regex(/^\d{1,13}(\.\d{1,2})?$/, 'Use a plain amount such as 1500 or 1500.00');
+
 const durationString = z.string().regex(/^\d+[smhd]$/, 'Use a duration such as 15m, 1h or 7d');
 
 const envSchema = z
@@ -49,6 +53,10 @@ const envSchema = z
     JWT_EXPIRES_IN: durationString.default('15m'),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     COOKIE_SECURE: booleanString.optional(),
+    /** Per-transaction and daily limits for simulated payments (KES, two decimals). */
+    TXN_MIN_AMOUNT: moneyString.default('1.00'),
+    TXN_MAX_AMOUNT: moneyString.default('150000.00'),
+    DAILY_SEND_LIMIT: moneyString.default('300000.00'),
     /** Max login/registration attempts per IP per window (see middleware/rateLimit.ts). */
     RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
   })

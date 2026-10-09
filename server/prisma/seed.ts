@@ -1,12 +1,13 @@
 /**
  * Database seed — DEMO DATA ONLY, NO REAL MONEY.
  *
- * Creates the treasury, the demo people, the demo business and an admin.
+ * Creates the treasury, the demo people, the demo business and an admin, then
+ * gives each wallet its opening balance through a FUNDING transaction from the
+ * treasury (via the DemoProvider) — balances are never written directly.
  * Every account goes through the same validation schemas as real sign-ups.
- * Simulated balances are added in Phase 4 through proper FUNDING transactions
- * from the treasury (never by writing balances directly).
  *
- * Idempotent: accounts that already exist are left untouched.
+ * Idempotent: existing accounts are left untouched and a wallet is only
+ * funded while it has no ledger history.
  * Demo credentials are for local development only — see README.
  */
 import { registerBusinessSchema, registerUserSchema } from '@app/shared';
@@ -14,7 +15,10 @@ import { disconnectDatabase, prisma } from '../src/config/database.js';
 import { env } from '../src/config/env.js';
 import { insertAccount } from '../src/services/account.service.js';
 import { ensureTreasury } from '../src/services/bootstrap.service.js';
+import { fundWallet } from '../src/services/funding.service.js';
+import { reconcileLedger } from '../src/services/reconciliation.service.js';
 import { logger } from '../src/utils/logger.js';
+import { money } from '../src/utils/money.js';
 import { hashSecret } from '../src/utils/password.js';
 
 export const DEMO_PASSWORD = 'Demo@2026';
@@ -48,6 +52,16 @@ const DEMO_PEOPLE = [
     phone: '0755000254',
   },
 ];
+
+/** Opening simulated balances (KES). */
+const OPENING_BALANCES: Record<string, string> = {
+  caleb254: '25000.00',
+  john254: '10000.00',
+  brian254: '7500.00',
+  mike254: '5000.00',
+  david254: '5000.00',
+  visiblegeneral: '50000.00',
+};
 
 const DEMO_BUSINESS = {
   businessName: 'VISIBLE GENERAL SUPPLIES LTD',
@@ -113,6 +127,23 @@ async function seedAdmin(): Promise<void> {
   logger.info(`Seeded demo admin @${DEMO_ADMIN.username}`);
 }
 
+async function seedOpeningBalances(): Promise<void> {
+  const system = await prisma.user.findFirstOrThrow({ where: { role: 'SYSTEM' } });
+  for (const [username, amount] of Object.entries(OPENING_BALANCES)) {
+    const wallet = await prisma.wallet.findFirst({ where: { user: { username } } });
+    if (!wallet) continue;
+    const hasHistory = (await prisma.ledgerEntry.count({ where: { walletId: wallet.id } })) > 0;
+    if (hasHistory) continue;
+    const posted = await fundWallet({
+      walletId: wallet.id,
+      amount: money(amount),
+      initiatorId: system.id,
+      reason: 'Opening demo balance',
+    });
+    logger.info(`Funded @${username} with KSh ${amount} (simulated) — ${posted.reference}`);
+  }
+}
+
 async function main(): Promise<void> {
   if (env.isProduction && process.env.ALLOW_DEMO_SEED !== 'true') {
     throw new Error('Refusing to seed demo accounts in production without ALLOW_DEMO_SEED=true.');
@@ -126,6 +157,10 @@ async function main(): Promise<void> {
   await seedPeople(passwordHash, pinHash);
   await seedBusiness(passwordHash, pinHash);
   await seedAdmin();
+  await seedOpeningBalances();
+
+  const report = await reconcileLedger();
+  if (!report.healthy) throw new Error('Ledger reconciliation failed after seeding.');
   logger.info('Seed complete — all accounts are DEMO accounts with simulated money only.');
 }
 

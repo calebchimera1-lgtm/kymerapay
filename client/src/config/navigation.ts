@@ -41,7 +41,7 @@ export function homePathFor(role: Role): string {
 const SIDEBAR: Record<AppRole, NavItem[]> = {
   USER: [
     { label: 'Dashboard', to: '/app', icon: LayoutDashboard, enabled: true },
-    { label: 'Wallet', to: '/app/wallet', icon: Wallet, enabled: false },
+    { label: 'Wallet', to: '/app/wallet', icon: Wallet, enabled: true },
     { label: 'Send', to: '/app/send', icon: ArrowUpRight, enabled: false },
     { label: 'Request', to: '/app/request', icon: ArrowDownLeft, enabled: false },
     { label: 'Split Bills', to: '/app/split', icon: Split, enabled: false },
@@ -78,7 +78,8 @@ const MOBILE: Record<AppRole, NavItem[]> = {
   USER: [
     { label: 'Home', to: '/app', icon: LayoutDashboard, enabled: true },
     { label: 'Pay', to: '/app/send', icon: ArrowUpRight, enabled: false },
-    { label: 'Activity', to: '/app/transactions', icon: ReceiptText, enabled: false },
+    // Points at the wallet statement until the full transaction history lands.
+    { label: 'Activity', to: '/app/wallet', icon: ReceiptText, enabled: true },
     { label: 'Profile', to: '/profile', icon: User, enabled: true },
   ],
   BUSINESS: [
