@@ -1,9 +1,11 @@
 import { createApp } from './app.js';
 import { disconnectDatabase } from './config/database.js';
 import { env } from './config/env.js';
+import { startScheduler } from './jobs/scheduler.js';
 import { logger } from './utils/logger.js';
 
 const app = createApp();
+const stopScheduler = startScheduler();
 
 const server = app.listen(env.PORT, () => {
   logger.info(
@@ -16,6 +18,7 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 function shutdown(signal: NodeJS.Signals): void {
   logger.info({ signal }, 'Shutting down gracefully');
+  stopScheduler();
   server.close((err) => {
     disconnectDatabase()
       .catch((dbErr: unknown) => logger.error({ err: dbErr }, 'Error closing database pool'))

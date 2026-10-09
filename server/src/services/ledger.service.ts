@@ -28,6 +28,11 @@ export interface PostTransferInput {
   provider?: string;
   providerRef?: string;
   metadata?: Prisma.InputJsonObject;
+  /**
+   * Extra checks that must run while both wallets are locked (e.g. the daily
+   * limit, which depends on the sender's other payments). Throw to abort.
+   */
+  afterLock?: () => Promise<void>;
 }
 
 interface LockedWallet {
@@ -114,6 +119,8 @@ export async function postTransfer(
   if (from.currency !== 'KES' || to.currency !== 'KES') {
     throw AppError.badRequest('Only KES wallets are supported.');
   }
+
+  await input.afterLock?.();
 
   const fromBalanceAfter = money(from.balance).minus(amount);
   const toBalanceAfter = money(to.balance).plus(amount);

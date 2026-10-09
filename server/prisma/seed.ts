@@ -17,6 +17,7 @@ import { insertAccount } from '../src/services/account.service.js';
 import { ensureTreasury } from '../src/services/bootstrap.service.js';
 import { fundWallet } from '../src/services/funding.service.js';
 import { reconcileLedger } from '../src/services/reconciliation.service.js';
+import { sendMoney } from '../src/services/transfer.service.js';
 import { logger } from '../src/utils/logger.js';
 import { money } from '../src/utils/money.js';
 import { hashSecret } from '../src/utils/password.js';
@@ -144,6 +145,34 @@ async function seedOpeningBalances(): Promise<void> {
   }
 }
 
+/** A little realistic history so dashboards aren't empty. Sent through the real transfer service. */
+const SAMPLE_TRANSFERS: [from: string, to: string, amount: string, note: string][] = [
+  ['john254', 'caleb254', '2000.00', 'Internet bill'],
+  ['caleb254', 'john254', '1500.00', 'Lunch 😂'],
+  ['brian254', 'caleb254', '500.00', 'Matatu fare'],
+  ['caleb254', 'visiblegeneral', '3500.00', 'Stationery'],
+  ['mike254', 'caleb254', '1200.00', 'Dinner split'],
+  ['david254', 'brian254', '800.00', 'Football boots'],
+];
+
+async function seedSampleTransfers(): Promise<void> {
+  const alreadySeeded = await prisma.transaction.count({
+    where: { type: { in: ['TRANSFER', 'BUSINESS_PAYMENT'] } },
+  });
+  if (alreadySeeded > 0) return;
+
+  const context = { ip: null, userAgent: 'seed', requestId: 'seed', deviceId: null };
+  for (const [from, to, amount, note] of SAMPLE_TRANSFERS) {
+    const sender = await prisma.user.findUniqueOrThrow({ where: { username: from } });
+    const result = await sendMoney(
+      sender.id,
+      { recipient: to, amount, note, pin: DEMO_PIN },
+      context,
+    );
+    logger.info(`Sample payment @${from} → @${to} KSh ${amount} — ${result.transaction.reference}`);
+  }
+}
+
 async function main(): Promise<void> {
   if (env.isProduction && process.env.ALLOW_DEMO_SEED !== 'true') {
     throw new Error('Refusing to seed demo accounts in production without ALLOW_DEMO_SEED=true.');
@@ -158,6 +187,7 @@ async function main(): Promise<void> {
   await seedBusiness(passwordHash, pinHash);
   await seedAdmin();
   await seedOpeningBalances();
+  await seedSampleTransfers();
 
   const report = await reconcileLedger();
   if (!report.healthy) throw new Error('Ledger reconciliation failed after seeding.');

@@ -12,6 +12,7 @@ import { RouteErrorPage } from '@/pages/errors/RouteErrorPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WelcomePage } from '@/pages/public/WelcomePage';
 import { WalletPage } from '@/pages/wallet/WalletPage';
+import { SendMoneyPage } from '@/pages/send/SendMoneyPage';
 import { GuestOnly, RequireAuth } from './guards';
 
 export const router = createBrowserRouter([
@@ -53,6 +54,14 @@ export const router = createBrowserRouter([
             element: (
               <RequireAuth roles={['USER']}>
                 <WalletPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'app/send',
+            element: (
+              <RequireAuth roles={['USER']}>
+                <SendMoneyPage />
               </RequireAuth>
             ),
           },

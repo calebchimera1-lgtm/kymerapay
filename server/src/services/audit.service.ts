@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = {
   PIN_FAILED: 'PIN_FAILED',
   PIN_LOCKED: 'PIN_LOCKED',
   WALLET_FUNDED: 'WALLET_FUNDED',
+  TRANSFER_COMPLETED: 'TRANSFER_COMPLETED',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

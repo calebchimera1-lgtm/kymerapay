@@ -59,6 +59,8 @@ const envSchema = z
     DAILY_SEND_LIMIT: moneyString.default('300000.00'),
     /** Max login/registration attempts per IP per window (see middleware/rateLimit.ts). */
     RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
+    /** Max money-moving requests per user per minute. */
+    RATE_LIMIT_PAYMENTS_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(20),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === 'production' && value.JWT_SECRET === PLACEHOLDER_SECRET) {

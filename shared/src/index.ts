@@ -8,3 +8,5 @@ export * from './validation/auth.js';
 export * from './money.js';
 export * from './wallet.js';
 export * from './validation/common.js';
+export * from './transfer.js';
+export * from './validation/transfer.js';

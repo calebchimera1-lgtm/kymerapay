@@ -7,10 +7,16 @@ import { AppError } from '../utils/AppError.js';
  * Uses the in-memory store: correct for a single instance. Swap in a shared
  * store (e.g. Redis) before running more than one API instance.
  */
-function createLimiter(options: Pick<Options, 'windowMs' | 'limit'> & { message: string }) {
+function createLimiter(
+  options: Pick<Options, 'windowMs' | 'limit'> & {
+    message: string;
+    keyGenerator?: Options['keyGenerator'];
+  },
+) {
   return rateLimit({
     windowMs: options.windowMs,
     limit: options.limit,
+    ...(options.keyGenerator ? { keyGenerator: options.keyGenerator } : {}),
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (_req, _res, next) => {
@@ -45,4 +51,23 @@ export const refreshRateLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: env.RATE_LIMIT_AUTH_MAX * 6,
   message: 'Too many session refreshes. Please sign in again shortly.',
+});
+
+/** Keyed by account (routes using these run after `requireAuth`). */
+const byUser: Options['keyGenerator'] = (req) => `user:${req.auth?.userId ?? 'anonymous'}`;
+
+/** Money-moving requests per user. */
+export const paymentRateLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: env.RATE_LIMIT_PAYMENTS_PER_MINUTE,
+  keyGenerator: byUser,
+  message: 'Too many payments in a short time. Please wait a minute and try again.',
+});
+
+/** Directory lookups per user (limits scraping of usernames). */
+export const searchRateLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 60,
+  keyGenerator: byUser,
+  message: 'Too many searches. Please slow down.',
 });

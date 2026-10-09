@@ -1,17 +1,19 @@
 import { formatMoney } from '@app/shared';
 import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, QrCode, RotateCw, ScanLine } from 'lucide-react';
+import { Link } from 'react-router';
 import { BeadPattern } from '@/components/brand/BeadPattern';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { cn } from '@/utils/cn';
 
-const QUICK_ACTIONS = [
-  { label: 'Send', Icon: ArrowUpRight },
+/** `to` is set once the feature ships; others render as "coming soon". */
+const QUICK_ACTIONS: { label: string; Icon: typeof ArrowUpRight; to?: string }[] = [
+  { label: 'Send', Icon: ArrowUpRight, to: '/app/send' },
   { label: 'Request', Icon: ArrowDownLeft },
   { label: 'Scan', Icon: ScanLine },
   { label: 'Pay', Icon: QrCode },
-] as const;
+];
 
 /**
  * The wallet hero. The balance shown is exactly the string the server sent —
@@ -94,19 +96,28 @@ export function BalanceCard({ showActions = true }: { showActions?: boolean }) {
 
         {showActions && (
           <ul className="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
-            {QUICK_ACTIONS.map(({ label, Icon }) => (
+            {QUICK_ACTIONS.map(({ label, Icon, to }) => (
               <li key={label}>
-                <span
-                  aria-disabled="true"
-                  title="Available in the next release"
-                  className="flex cursor-not-allowed flex-col items-center gap-1.5 opacity-70"
-                >
-                  <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-white/15">
-                    <Icon className="size-5" aria-hidden="true" />
+                {to ? (
+                  <Link to={to} className="group flex flex-col items-center gap-1.5 rounded-2xl">
+                    <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-white/15 transition-colors group-hover:bg-white/25">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    {label}
+                  </Link>
+                ) : (
+                  <span
+                    aria-disabled="true"
+                    title="Available in the next release"
+                    className="flex cursor-not-allowed flex-col items-center gap-1.5 opacity-70"
+                  >
+                    <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-white/15">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    {label}
+                    <span className="sr-only">(coming soon)</span>
                   </span>
-                  {label}
-                  <span className="sr-only">(coming soon)</span>
-                </span>
+                )}
               </li>
             ))}
           </ul>
