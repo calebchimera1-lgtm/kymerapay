@@ -1,0 +1,73 @@
+# KESPAY local stack — DEMO MODE, NO REAL MONEY.
+#   docker compose up --build              → db + api + web (http://localhost:8080)
+#   docker compose up -d postgres          → database only, for `npm run dev`
+#   docker compose --profile test up -d    → adds the throwaway test database
+
+name: kespay
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kespay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kespay_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-kespay}
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-test:
+    image: postgres:16-alpine
+    profiles: ['test']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kespay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kespay_dev_password}
+      POSTGRES_DB: kespay_test
+    ports:
+      - '5433:5432'
+    # Test data is disposable — keep it in memory.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d kespay_test']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kespay}:${POSTGRES_PASSWORD:-kespay_dev_password}@postgres:5432/${POSTGRES_DB:-kespay}?schema=public
+      CLIENT_URL: http://localhost:8080
+      TRUST_PROXY: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - '8080:80'
+
+volumes:
+  pgdata:
