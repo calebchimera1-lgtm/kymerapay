@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
@@ -24,6 +25,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(corsMiddleware);
   app.use(express.json({ limit: '100kb' }));
+  app.use(cookieParser());
 
   app.use('/api', apiRateLimiter, apiRouter);
 

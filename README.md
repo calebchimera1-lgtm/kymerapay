@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 2 of 15 (database + Prisma). See the
+**Build status:** Phase 3 of 15 (authentication). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -79,6 +79,27 @@ Web: http://localhost:8080 (nginx serves the SPA and proxies `/api` to the serve
 
 Every response uses the envelope `{ "success": true, "data": … }` or
 `{ "success": false, "error": { "code", "message", "requestId" } }`.
+
+## Demo accounts
+
+After `npm run db:seed` (local development only — never reuse these credentials):
+
+| Account                                             | Sign in with              | Password     | PIN    |
+| --------------------------------------------------- | ------------------------- | ------------ | ------ |
+| @caleb254, @john254, @brian254, @mike254, @david254 | username, e-mail or phone | `Demo@2026`  | `1357` |
+| @visiblegeneral — VISIBLE GENERAL SUPPLIES LTD      | `visiblegeneral`          | `Demo@2026`  | `1357` |
+| @admin (administrator, no wallet)                   | `admin`                   | `Admin@2026` | —      |
+
+Simulated balances are added with the ledger in Phase 4.
+
+## Authentication in brief
+
+- Passwords and PINs are hashed with argon2id; neither is ever stored or logged in plaintext.
+- A 15-minute access token (JWT) lives only in browser memory. A refresh token lives in an
+  `httpOnly; SameSite=Strict` cookie scoped to `/api/auth`, is stored hashed, and rotates on
+  every use. Replaying an old refresh token signs out every device in that session family.
+- Five wrong passwords lock sign-in for 15 minutes; five wrong PINs pause payments for 15
+  minutes. Role, status and session are re-checked against the database on every request.
 
 ## Database
 

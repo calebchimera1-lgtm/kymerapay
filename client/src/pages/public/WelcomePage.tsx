@@ -8,6 +8,7 @@ import {
   Store,
   Users,
 } from 'lucide-react';
+import { Link } from 'react-router';
 import { BeadPattern } from '@/components/brand/BeadPattern';
 import { Badge } from '@/components/ui/Badge';
 import { BRAND } from '@/config/brand';
@@ -59,10 +60,20 @@ export function WelcomePage() {
             <span className="block text-primary">made simple.</span>
           </h1>
           <p className="max-w-xl text-lg text-fg-muted">{BRAND.tagline}</p>
-          <p className="max-w-xl text-sm text-fg-muted">
-            Accounts, sign-in and the wallet arrive in the next build phases. This preview shows the
-            platform foundation and live API status.
-          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/register"
+              className="inline-flex h-12 items-center rounded-2xl bg-primary px-6 font-semibold text-primary-fg shadow-sm hover:bg-primary-hover"
+            >
+              Create a demo account
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex h-12 items-center rounded-2xl border border-border bg-surface px-6 font-semibold hover:bg-surface-muted"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
 
         <PreviewWalletCard />

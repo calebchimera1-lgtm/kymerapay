@@ -49,6 +49,8 @@ const envSchema = z
     JWT_EXPIRES_IN: durationString.default('15m'),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     COOKIE_SECURE: booleanString.optional(),
+    /** Max login/registration attempts per IP per window (see middleware/rateLimit.ts). */
+    RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === 'production' && value.JWT_SECRET === PLACEHOLDER_SECRET) {
