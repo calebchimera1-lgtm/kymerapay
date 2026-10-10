@@ -43,7 +43,7 @@ export function Sidebar() {
       </nav>
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-          <Avatar name={user.fullName} src={user.avatarUrl} size="sm" />
+          <Avatar name={user.fullName} src={user.business?.logoUrl ?? user.avatarUrl} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{user.fullName}</p>
             <p className="truncate text-xs text-fg-muted">@{user.username}</p>

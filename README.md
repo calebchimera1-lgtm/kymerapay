@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 7 of 15 (QR payments). See the
+**Build status:** Phase 8 of 15 (business accounts). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -122,6 +122,37 @@ the payer reviews the payee and amount and confirms with their PIN. **A scan nev
 itself.** Businesses can also create single-use codes for an exact amount with an expiry; the
 server enforces the amount and consumes the code inside the payment's database transaction, so it
 can be paid only once. Phone camera apps can open `https://<app>/pay/<code>` links too.
+
+### Business accounts
+
+Businesses have their own wallet and a dashboard: today's sales, transactions and customers,
+pending requests, and a 7-day sales chart. They also get analytics for 7, 30 or 90 days, compared
+with the previous period, plus their top customers, a paginated customer list, payments received
+and sent requests, and an editable business profile with a logo. Customer lists show names and
+usernames only, never phone numbers or e-mails. A sale is any completed incoming transfer
+(direct, QR, request or split payment).
+
+| Method | Path                           | Who      | Description                          |
+| ------ | ------------------------------ | -------- | ------------------------------------ |
+| GET    | `/api/businesses/:username`    | any      | Public business card                 |
+| POST   | `/api/businesses/:id/pay`      | USER     | Pay a business (PIN, idempotent)     |
+| GET    | `/api/businesses/me/dashboard` | BUSINESS | Today's figures, balance, pending    |
+| GET    | `/api/businesses/me/analytics` | BUSINESS | `?days=7\|30\|90`                    |
+| GET    | `/api/businesses/me/customers` | BUSINESS | `?page&limit`                        |
+| PATCH  | `/api/businesses/me`           | BUSINESS | Update details (`""` clears a field) |
+| POST   | `/api/businesses/me/logo`      | BUSINESS | Upload logo (`multipart`, `file`)    |
+| PATCH  | `/api/users/me`                | any      | Update name / default visibility     |
+| POST   | `/api/users/me/avatar`         | any      | Upload avatar                        |
+| DELETE | `/api/users/me/avatar`         | any      | Remove avatar                        |
+
+### Image uploads
+
+Uploads accept PNG, JPEG or WebP up to 2 MB. The type is detected from the file's bytes, not its
+name or `Content-Type`. Every image is re-encoded to a 512 px WebP, which strips EXIF data such
+as GPS location and anything hidden in the original file. Files get random names under
+`UPLOAD_DIR` and are served from `/uploads` with `nosniff` and a sandboxing CSP. Replacing an
+image deletes the old file. Storage sits behind a `StorageProvider` interface, so the local disk
+can later be swapped for object storage.
 
 ### Idempotency
 

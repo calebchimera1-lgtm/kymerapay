@@ -54,13 +54,13 @@ const SIDEBAR: Record<AppRole, NavItem[]> = {
   ],
   BUSINESS: [
     { label: 'Dashboard', to: '/business', icon: LayoutDashboard, enabled: true },
-    { label: 'Payments', to: '/business/payments', icon: Wallet, enabled: false },
+    { label: 'Payments', to: '/business/payments', icon: Wallet, enabled: true },
     { label: 'Transactions', to: '/business/transactions', icon: ReceiptText, enabled: false },
-    { label: 'Customers', to: '/business/customers', icon: Users, enabled: false },
+    { label: 'Customers', to: '/business/customers', icon: Users, enabled: true },
     { label: 'QR Code', to: '/business/qr', icon: QrCode, enabled: true },
     { label: 'Receipts', to: '/business/receipts', icon: ScrollText, enabled: false },
-    { label: 'Analytics', to: '/business/analytics', icon: BarChart3, enabled: false },
-    { label: 'Business Profile', to: '/profile', icon: Store, enabled: true },
+    { label: 'Analytics', to: '/business/analytics', icon: BarChart3, enabled: true },
+    { label: 'Business Profile', to: '/business/profile', icon: Store, enabled: true },
     { label: 'Settings', to: '/settings', icon: Settings, enabled: false },
   ],
   ADMIN: [
@@ -85,7 +85,7 @@ const MOBILE: Record<AppRole, NavItem[]> = {
   BUSINESS: [
     { label: 'Home', to: '/business', icon: LayoutDashboard, enabled: true },
     { label: 'QR Code', to: '/business/qr', icon: QrCode, enabled: true },
-    { label: 'Activity', to: '/business/transactions', icon: ReceiptText, enabled: false },
+    { label: 'Payments', to: '/business/payments', icon: ReceiptText, enabled: true },
     { label: 'Profile', to: '/profile', icon: Store, enabled: true },
   ],
   ADMIN: [

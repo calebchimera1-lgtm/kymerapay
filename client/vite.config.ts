@@ -23,6 +23,11 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_DEV_API_PROXY ?? 'http://localhost:4000',
           changeOrigin: false,
         },
+        // Uploaded avatars and logos are served by the API.
+        '/uploads': {
+          target: env.VITE_DEV_API_PROXY ?? 'http://localhost:4000',
+          changeOrigin: false,
+        },
       },
     },
     preview: { port: 4173 },

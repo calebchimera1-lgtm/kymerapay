@@ -32,6 +32,8 @@ COPY --from=prod-deps --chown=node:node /app/shared/package.json shared/
 COPY --from=prod-deps --chown=node:node /app/shared/dist shared/dist
 COPY --from=prod-deps --chown=node:node /app/server/package.json server/
 COPY --from=prod-deps --chown=node:node /app/server/dist server/dist
+# Writable directory for uploaded images (mount a volume here in production).
+RUN mkdir -p /app/server/uploads && chown node:node /app/server/uploads
 USER node
 WORKDIR /app/server
 EXPOSE 4000

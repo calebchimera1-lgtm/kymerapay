@@ -8,6 +8,8 @@ export interface BusinessSummary {
   description: string | null;
   logoUrl: string | null;
   isVerified: boolean;
+  /** Owner-only placeholder for a future business registration number. */
+  registrationNumber: string | null;
 }
 
 /** The signed-in account as returned by `/auth/*` and `GET /users/me`. Never contains secrets. */

@@ -20,7 +20,16 @@ import { usePublicConfig } from '@/hooks/useSystemStatus';
 import { toApiClientError } from '@/services/api';
 import { cn } from '@/utils/cn';
 
-export function NewRequestPage() {
+interface NewRequestPageProps {
+  /** Where "View requests" goes (personal vs business area). */
+  listPath?: string;
+  homePath?: string;
+}
+
+export function NewRequestPage({
+  listPath = '/app/requests?tab=sent',
+  homePath = '/app',
+}: NewRequestPageProps) {
   const navigate = useNavigate();
   const [payer, setPayer] = useState<PublicProfile | null>(null);
   const [amount, setAmount] = useState('');
@@ -44,14 +53,10 @@ export function NewRequestPage() {
           let you know when they respond.
         </p>
         <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => void navigate('/app/requests?tab=sent')}
-          >
+          <Button variant="secondary" size="lg" onClick={() => void navigate(listPath)}>
             View requests
           </Button>
-          <Button size="lg" onClick={() => void navigate('/app')}>
+          <Button size="lg" onClick={() => void navigate(homePath)}>
             Done
           </Button>
         </div>

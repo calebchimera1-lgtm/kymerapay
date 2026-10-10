@@ -16,3 +16,5 @@ process.env.JWT_EXPIRES_IN = '15m';
 process.env.REFRESH_TOKEN_TTL_DAYS = '7';
 process.env.RATE_LIMIT_AUTH_MAX = '1000';
 process.env.RATE_LIMIT_PAYMENTS_PER_MINUTE = '1000';
+// Uploaded test images go to a throwaway directory.
+process.env.UPLOAD_DIR = `${(await import('node:os')).tmpdir()}/wallet-test-uploads-${process.pid}`;

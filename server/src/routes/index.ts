@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authRouter } from './auth.routes.js';
 import { billSplitRouter } from './billSplit.routes.js';
+import { businessRouter } from './business.routes.js';
 import { paymentRequestRouter } from './paymentRequest.routes.js';
 import { qrRouter } from './qr.routes.js';
 import { systemRouter } from './system.routes.js';
@@ -19,3 +20,4 @@ apiRouter.use('/transfers', transferRouter);
 apiRouter.use('/payment-requests', paymentRequestRouter);
 apiRouter.use('/bill-splits', billSplitRouter);
 apiRouter.use('/qr', qrRouter);
+apiRouter.use('/businesses', businessRouter);

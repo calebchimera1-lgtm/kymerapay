@@ -1,3 +1,4 @@
+import type { Role } from '@app/shared';
 import type { ReactElement } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/layouts/AppLayout';
@@ -20,18 +21,25 @@ import { NewSplitPage } from '@/pages/split/NewSplitPage';
 import { SplitDetailPage } from '@/pages/split/SplitDetailPage';
 import { SplitListPage } from '@/pages/split/SplitListPage';
 import { BusinessQrPage } from '@/pages/business/BusinessQrPage';
+import { AnalyticsPage } from '@/pages/business/AnalyticsPage';
+import { BusinessPaymentsPage } from '@/pages/business/BusinessPaymentsPage';
+import { BusinessProfilePage } from '@/pages/business/BusinessProfilePage';
+import { CustomersPage } from '@/pages/business/CustomersPage';
 import { MyQrPage } from '@/pages/qr/MyQrPage';
 import { PayLinkRedirect } from '@/pages/qr/PayLinkRedirect';
 import { ScanPage } from '@/pages/qr/ScanPage';
 import { GuestOnly, RequireAuth } from './guards';
 
-/** Personal-account pages, each behind the USER role guard. */
-function userRoutes(entries: [path: string, element: ReactElement][]) {
+/** Pages for one account type, each behind that role guard. */
+function roleRoutes(role: Role, entries: [path: string, element: ReactElement][]) {
   return entries.map(([path, element]) => ({
     path,
-    element: <RequireAuth roles={['USER']}>{element}</RequireAuth>,
+    element: <RequireAuth roles={[role]}>{element}</RequireAuth>,
   }));
 }
+
+const userRoutes = (entries: [path: string, element: ReactElement][]) =>
+  roleRoutes('USER', entries);
 
 export const router = createBrowserRouter([
   {
@@ -87,14 +95,17 @@ export const router = createBrowserRouter([
             ['app/qr', <MyQrPage />],
             ['pay/:code', <PayLinkRedirect />],
           ]),
-          {
-            path: 'business/qr',
-            element: (
-              <RequireAuth roles={['BUSINESS']}>
-                <BusinessQrPage />
-              </RequireAuth>
-            ),
-          },
+          ...roleRoutes('BUSINESS', [
+            ['business/qr', <BusinessQrPage />],
+            ['business/payments', <BusinessPaymentsPage />],
+            [
+              'business/requests/new',
+              <NewRequestPage listPath="/business/payments" homePath="/business" />,
+            ],
+            ['business/customers', <CustomersPage />],
+            ['business/analytics', <AnalyticsPage />],
+            ['business/profile', <BusinessProfilePage />],
+          ]),
           {
             path: 'business',
             element: (

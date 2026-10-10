@@ -1,13 +1,17 @@
 import type { CreateTransferInput } from '@app/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
 import { directoryService, transferService } from '@/services/transfer.service';
 import { walletKeys } from './useWallet';
 
+/** Personal accounts only — the endpoint is USER-scoped, so other roles skip the call. */
 export function useRecentRecipients() {
+  const isPersonal = useAuthStore((state) => state.user?.role === 'USER');
   return useQuery({
     queryKey: ['transfers', 'recent-recipients'],
     queryFn: transferService.recentRecipients,
+    enabled: isPersonal,
   });
 }
 

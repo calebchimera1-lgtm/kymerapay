@@ -1,7 +1,13 @@
 import { BUSINESS_CATEGORY_LABELS, formatKenyanPhone, type AuthUser } from '@app/shared';
 import { Lock, LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ImageUploader } from '@/components/profile/ImageUploader';
+import { PersonalDetailsForm } from '@/components/profile/PersonalDetailsForm';
+import { useRemoveAvatar, useUploadAvatar } from '@/hooks/useBusiness';
+import { toApiClientError } from '@/services/api';
 import { MyQrPanel } from '@/components/qr/MyQrPanel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -29,7 +35,11 @@ export function ProfilePage() {
 
       <Card>
         <CardBody className="flex flex-col items-center gap-3 py-8 text-center">
-          <Avatar name={user.fullName} src={user.avatarUrl} size="xl" />
+          {user.business ? (
+            <Avatar name={user.fullName} src={user.business.logoUrl} size="xl" />
+          ) : (
+            <AvatarEditor />
+          )}
           <div>
             <h2 className="text-xl font-bold">{user.fullName}</h2>
             <p className="text-fg-muted">@{user.username}</p>
@@ -50,6 +60,24 @@ export function ProfilePage() {
           </CardHeader>
           <CardBody className="pb-8">
             <MyQrPanel size={180} />
+          </CardBody>
+        </Card>
+      )}
+
+      {user.business ? (
+        <Link
+          to="/business/profile"
+          className="flex items-center justify-between rounded-card border border-border bg-surface p-5 font-semibold shadow-card hover:border-border-strong"
+        >
+          Edit business profile & logo <ChevronRight className="size-4" aria-hidden="true" />
+        </Link>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal details</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <PersonalDetailsForm />
           </CardBody>
         </Card>
       )}
@@ -117,5 +145,23 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
       <dt className="text-sm text-fg-muted">{label}</dt>
       <dd className="text-sm font-medium break-words sm:text-right">{value}</dd>
     </div>
+  );
+}
+
+function AvatarEditor() {
+  const user = useAuthStore((state) => state.user)!;
+  const upload = useUploadAvatar();
+  const remove = useRemoveAvatar();
+  const error = upload.error ?? remove.error;
+  return (
+    <ImageUploader
+      name={user.fullName}
+      src={user.avatarUrl}
+      label="Change profile photo"
+      uploading={upload.isPending || remove.isPending}
+      error={error ? toApiClientError(error).message : null}
+      onUpload={(file) => upload.mutate(file)}
+      onRemove={() => remove.mutate()}
+    />
   );
 }

@@ -33,6 +33,11 @@ export interface PostTransferInput {
    * limit, which depends on the sender's other payments). Throw to abort.
    */
   afterLock?: () => Promise<void>;
+  /**
+   * Seed-only: record a past timestamp to build demo history. Never set from
+   * request input. Balances are still computed from the current locked state.
+   */
+  occurredAt?: Date;
 }
 
 interface LockedWallet {
@@ -129,7 +134,7 @@ export async function postTransfer(
     throw new AppError(ERROR_CODES.INSUFFICIENT_BALANCE, 'Insufficient wallet balance.', 422);
   }
 
-  const now = new Date();
+  const now = input.occurredAt ?? new Date();
   const transaction = await tx.transaction.create({
     data: {
       reference: await uniqueReference(tx),
@@ -149,6 +154,7 @@ export async function postTransfer(
       providerRef: input.providerRef ?? null,
       ...(input.metadata ? { metadata: input.metadata } : {}),
       completedAt: now,
+      ...(input.occurredAt ? { createdAt: now } : {}),
       ledgerEntries: {
         create: [
           {
@@ -156,8 +162,15 @@ export async function postTransfer(
             direction: 'DEBIT',
             amount,
             balanceAfter: fromBalanceAfter,
+            ...(input.occurredAt ? { createdAt: now } : {}),
           },
-          { walletId: input.toWalletId, direction: 'CREDIT', amount, balanceAfter: toBalanceAfter },
+          {
+            walletId: input.toWalletId,
+            direction: 'CREDIT',
+            amount,
+            balanceAfter: toBalanceAfter,
+            ...(input.occurredAt ? { createdAt: now } : {}),
+          },
         ],
       },
     },

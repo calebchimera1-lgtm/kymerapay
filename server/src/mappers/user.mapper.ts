@@ -28,6 +28,7 @@ export function toAuthUser(user: User & { businessProfile?: BusinessProfile | nu
           description: profile.description,
           logoUrl: profile.logoUrl,
           isVerified: profile.isVerified,
+          registrationNumber: profile.registrationNumber,
         }
       : null,
   };

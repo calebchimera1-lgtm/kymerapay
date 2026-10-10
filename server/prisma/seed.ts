@@ -18,6 +18,8 @@ import { ensureTreasury } from '../src/services/bootstrap.service.js';
 import { fundWallet } from '../src/services/funding.service.js';
 import { reconcileLedger } from '../src/services/reconciliation.service.js';
 import { sendMoney } from '../src/services/transfer.service.js';
+import { postTransfer } from '../src/services/ledger.service.js';
+import { runInTransaction } from '../src/utils/transaction.js';
 import { logger } from '../src/utils/logger.js';
 import { money } from '../src/utils/money.js';
 import { hashSecret } from '../src/utils/password.js';
@@ -173,6 +175,70 @@ async function seedSampleTransfers(): Promise<void> {
   }
 }
 
+/**
+ * Two weeks of sales at the demo shop so its dashboard and analytics have a
+ * realistic shape. Deterministic, backdated, and posted through the ledger
+ * service (balanced entries, balances from the locked state).
+ */
+async function seedBusinessHistory(): Promise<void> {
+  const shop = await prisma.wallet.findFirst({ where: { user: { username: 'visiblegeneral' } } });
+  if (!shop) return;
+  const existing = await prisma.transaction.count({
+    where: { toWalletId: shop.id, metadata: { path: ['seedHistory'], equals: true } },
+  });
+  if (existing > 0) return;
+
+  const customers = await prisma.wallet.findMany({
+    where: {
+      user: { username: { in: ['caleb254', 'john254', 'brian254', 'mike254', 'david254'] } },
+    },
+    select: { id: true, userId: true },
+  });
+  let state = 254;
+  const random = () => {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    return state / 2147483648;
+  };
+  const notes = ['Stationery', 'Printer paper', 'Paint', 'Hardware', 'Cables', 'Notebooks', null];
+
+  let posted = 0;
+  for (let daysAgo = 13; daysAgo >= 1; daysAgo -= 1) {
+    const salesToday = 1 + Math.floor(random() * 3);
+    for (let i = 0; i < salesToday; i += 1) {
+      const amount = money((150 + Math.floor(random() * 15) * 50).toFixed(2));
+      // Pick a customer who can afford it (balances vary with earlier demo activity).
+      const start = Math.floor(random() * customers.length);
+      let customer: (typeof customers)[number] | undefined;
+      for (let k = 0; k < customers.length && !customer; k += 1) {
+        const candidate = customers[(start + k) % customers.length]!;
+        const wallet = await prisma.wallet.findUniqueOrThrow({
+          where: { id: candidate.id },
+          select: { balance: true },
+        });
+        if (money(wallet.balance).gte(amount.plus(1000))) customer = candidate;
+      }
+      if (!customer) continue;
+      const occurredAt = new Date(
+        Date.now() - daysAgo * 86_400_000 + Math.floor(random() * 8) * 3_600_000,
+      );
+      await runInTransaction((tx) =>
+        postTransfer(tx, {
+          type: 'BUSINESS_PAYMENT',
+          fromWalletId: customer.id,
+          toWalletId: shop.id,
+          amount,
+          initiatorId: customer.userId,
+          note: notes[Math.floor(random() * notes.length)] ?? null,
+          metadata: { seedHistory: true },
+          occurredAt,
+        }),
+      );
+      posted += 1;
+    }
+  }
+  logger.info(`Seeded ${posted} backdated demo sales for @visiblegeneral`);
+}
+
 async function main(): Promise<void> {
   if (env.isProduction && process.env.ALLOW_DEMO_SEED !== 'true') {
     throw new Error('Refusing to seed demo accounts in production without ALLOW_DEMO_SEED=true.');
@@ -188,6 +254,7 @@ async function main(): Promise<void> {
   await seedAdmin();
   await seedOpeningBalances();
   await seedSampleTransfers();
+  await seedBusinessHistory();
 
   const report = await reconcileLedger();
   if (!report.healthy) throw new Error('Ledger reconciliation failed after seeding.');

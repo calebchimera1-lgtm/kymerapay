@@ -57,6 +57,8 @@ const envSchema = z
     TXN_MIN_AMOUNT: moneyString.default('1.00'),
     TXN_MAX_AMOUNT: moneyString.default('150000.00'),
     DAILY_SEND_LIMIT: moneyString.default('300000.00'),
+    /** Where uploaded images are stored (local storage provider). */
+    UPLOAD_DIR: z.string().min(1).default('uploads'),
     /** Max login/registration attempts per IP per window (see middleware/rateLimit.ts). */
     RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
     /** Max money-moving requests per user per minute. */
