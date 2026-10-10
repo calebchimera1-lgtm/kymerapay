@@ -11,8 +11,8 @@ import { cn } from '@/utils/cn';
 const QUICK_ACTIONS: { label: string; Icon: typeof ArrowUpRight; to?: string }[] = [
   { label: 'Send', Icon: ArrowUpRight, to: '/app/send' },
   { label: 'Request', Icon: ArrowDownLeft, to: '/app/requests/new' },
-  { label: 'Scan', Icon: ScanLine },
-  { label: 'Pay', Icon: QrCode },
+  { label: 'Scan', Icon: ScanLine, to: '/app/scan' },
+  { label: 'Pay', Icon: QrCode, to: '/app/pay' },
 ];
 
 /**

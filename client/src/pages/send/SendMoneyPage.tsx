@@ -20,6 +20,7 @@ import { TransferSuccess } from '@/components/payments/TransferSuccess';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { usePublicConfig } from '@/hooks/useSystemStatus';
+import { useQrResolution } from '@/hooks/useQr';
 import { usePublicProfile, useSendMoney } from '@/hooks/useTransfers';
 import { useWallet } from '@/hooks/useWallet';
 import { ApiClientError, toApiClientError } from '@/services/api';
@@ -34,10 +35,17 @@ function isUncertain(error: ApiClientError): boolean {
   return error.status === 0 || error.status >= 500;
 }
 
-export function SendMoneyPage() {
+interface SendMoneyPageProps {
+  /** `business` = "Pay a business": the picker only offers businesses. */
+  audience?: 'any' | 'business';
+}
+
+export function SendMoneyPage({ audience = 'any' }: SendMoneyPageProps) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const prefill = params.get('to');
+  const qrCode = params.get('qr');
+  const title = audience === 'business' ? 'Pay a business' : 'Send money';
   const defaultVisibility = useAuthStore((state) => state.user?.defaultVisibility ?? 'PRIVATE');
 
   const [chosen, setChosen] = useState<PublicProfile | null>(null);
@@ -48,13 +56,17 @@ export function SendMoneyPage() {
   const [result, setResult] = useState<TransferResult | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
 
-  // A `?to=username` deep link (e.g. from a QR code) pre-selects the recipient.
-  const prefilled = usePublicProfile(chosen ? null : prefill);
-  const recipient = chosen ?? prefilled.data ?? null;
+  // `?qr=<code>` (from Scan & Pay) is resolved by the server; `?to=username` pre-selects a person.
+  const qr = useQrResolution(qrCode);
+  const qrPayee = qr.data && !qr.data.isOwn ? qr.data : null;
+  const prefilled = usePublicProfile(chosen || qrCode ? null : prefill);
+  const recipient = qrPayee?.payee ?? chosen ?? prefilled.data ?? null;
+  /** Fixed-amount QR codes dictate the amount; the server enforces it too. */
+  const fixedAmount = qrPayee?.amount ?? null;
 
   function setRecipient(profile: PublicProfile | null) {
     setChosen(profile);
-    if (!profile && prefill) setParams({}, { replace: true });
+    if (!profile && (prefill || qrCode)) setParams({}, { replace: true });
   }
 
   const send = useSendMoney();
@@ -68,7 +80,7 @@ export function SendMoneyPage() {
     setResult(null);
     attempt.current = null;
     send.reset();
-    if (prefill) setParams({}, { replace: true });
+    if (prefill || qrCode) setParams({}, { replace: true });
   }
 
   if (result) {
@@ -77,10 +89,42 @@ export function SendMoneyPage() {
     );
   }
 
+  if (qrCode && !recipient) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <PageHeader title="Scan & Pay" />
+        {qr.isPending ? (
+          <LoadingState label="Checking QR code…" />
+        ) : (
+          <ErrorState
+            title={qr.data?.isOwn ? 'This is your own QR code' : 'QR code not valid'}
+            message={
+              qr.data?.isOwn
+                ? 'Show it to someone who wants to pay you.'
+                : qr.error
+                  ? toApiClientError(qr.error).message
+                  : 'This code cannot be paid.'
+            }
+          />
+        )}
+        <div className="text-center">
+          <Button variant="secondary" onClick={() => void navigate('/app/scan')}>
+            Scan another code
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!recipient) {
     return (
       <div className="mx-auto max-w-xl">
-        <PageHeader title="Send money" description="Who are you paying?" />
+        <PageHeader
+          title={title}
+          description={
+            audience === 'business' ? 'Find a shop or service by name.' : 'Who are you paying?'
+          }
+        />
         {prefill && prefilled.isPending ? (
           <LoadingState label="Finding recipient…" />
         ) : prefill && prefilled.isError ? (
@@ -90,12 +134,20 @@ export function SendMoneyPage() {
             className="mb-6"
           />
         ) : null}
-        <RecipientPicker onSelect={setRecipient} />
+        <RecipientPicker
+          onSelect={setRecipient}
+          {...(audience === 'business'
+            ? {
+                accept: (profile: PublicProfile) => profile.kind === 'business',
+                placeholder: 'Search businesses',
+              }
+            : {})}
+        />
       </div>
     );
   }
 
-  const normalized = normalizeAmount(amount);
+  const normalized = fixedAmount ?? normalizeAmount(amount);
   const isBusiness = recipient.kind === 'business';
   const effectiveVisibility: Visibility = isBusiness ? 'PRIVATE' : visibility;
 
@@ -105,6 +157,7 @@ export function SendMoneyPage() {
       normalizedAmount,
       note.trim(),
       effectiveVisibility,
+      qrCode ?? '',
     ].join('|');
     // Same payment details → same key, so a retry can never pay twice.
     if (attempt.current?.signature !== signature) {
@@ -123,6 +176,7 @@ export function SendMoneyPage() {
           amount: normalized,
           ...(note.trim() ? { note: note.trim() } : {}),
           visibility: effectiveVisibility,
+          ...(qrPayee ? { qrCode: qrPayee.code } : {}),
           pin,
         },
         idempotencyKey: attempt.current.key,
@@ -147,8 +201,10 @@ export function SendMoneyPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <PageHeader title="Send money" />
+      <PageHeader title={qrPayee ? 'Scan & Pay' : title} />
       <AmountStep
+        fixedAmount={fixedAmount}
+        qrNote={qrPayee?.note ?? null}
         recipient={recipient}
         amount={amount}
         onAmountChange={setAmount}
@@ -176,6 +232,10 @@ export function SendMoneyPage() {
 }
 
 interface AmountStepProps {
+  /** Set for fixed-amount QR codes: shown read-only. */
+  fixedAmount: string | null;
+  /** What the payee wrote on the QR (e.g. "Invoice 42"). */
+  qrNote: string | null;
   recipient: PublicProfile;
   amount: string;
   onAmountChange: (value: string) => void;
@@ -188,6 +248,8 @@ interface AmountStepProps {
 }
 
 function AmountStep({
+  fixedAmount,
+  qrNote,
   recipient,
   amount,
   onAmountChange,
@@ -203,7 +265,7 @@ function AmountStep({
   const noteId = useId();
   const wallet = useWallet();
   const config = usePublicConfig();
-  const normalized = normalizeAmount(amount);
+  const normalized = fixedAmount ?? normalizeAmount(amount);
 
   // Client-side checks are hints for a smooth UX; the server re-validates everything.
   let problem: string | null = null;
@@ -248,13 +310,25 @@ function AmountStep({
       </Card>
 
       <div className="space-y-2 py-4 text-center">
-        <AmountField
-          id={amountId}
-          value={amount}
-          onChange={onAmountChange}
-          invalid={Boolean(problem)}
-          describedBy={hintId}
-        />
+        {fixedAmount ? (
+          <div id={amountId} aria-describedby={hintId}>
+            <p className="text-5xl font-extrabold tracking-tight tabular-nums sm:text-6xl">
+              {formatMoney(fixedAmount)}
+            </p>
+            <p className="mt-1 text-sm text-fg-muted">
+              Amount set by {recipient.displayName}
+              {qrNote ? ` · “${qrNote}”` : ''}
+            </p>
+          </div>
+        ) : (
+          <AmountField
+            id={amountId}
+            value={amount}
+            onChange={onAmountChange}
+            invalid={Boolean(problem)}
+            describedBy={hintId}
+          />
+        )}
         <p
           id={hintId}
           className={cn('text-sm', problem ? 'font-medium text-danger' : 'text-fg-muted')}

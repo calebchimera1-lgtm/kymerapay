@@ -8,7 +8,7 @@ A Kenyan digital wallet and social payments platform: send, request and split si
 pay businesses by QR, and view receipts and activity. `KESPAY` is a temporary name — branding
 lives in [`shared/src/brand.ts`](shared/src/brand.ts).
 
-**Build status:** Phase 6 of 15 (payment requests & bill splits). See the
+**Build status:** Phase 7 of 15 (QR payments). See the
 [architecture plan](docs/00-architecture-plan.md) for the roadmap.
 
 ## Stack
@@ -113,6 +113,15 @@ A bill split creates one share per person and a linked payment request for every
 creator, whose share counts as settled. Equal splits allocate leftover cents to the first shares
 (`1,000 ÷ 3 → 333.34 · 333.33 · 333.33`) — the same shared function runs in the browser preview and
 on the server. A split becomes `SETTLED` when every share is paid.
+
+### QR payments
+
+A QR encodes only an opaque, random code — `kespay://pay/<code>` — never a username or phone
+number. Scanning resolves the code to the payee's public profile and opens the normal send flow:
+the payer reviews the payee and amount and confirms with their PIN. **A scan never pays by
+itself.** Businesses can also create single-use codes for an exact amount with an expiry; the
+server enforces the amount and consumes the code inside the payment's database transaction, so it
+can be paid only once. Phone camera apps can open `https://<app>/pay/<code>` links too.
 
 ### Idempotency
 

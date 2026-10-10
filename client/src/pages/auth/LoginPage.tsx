@@ -10,6 +10,7 @@ import { PasswordInput } from '@/components/forms/PasswordInput';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/Button';
 import { homePathFor } from '@/config/navigation';
+import { safeReturnPath } from '@/router/guards';
 import { authService } from '@/services/auth.service';
 import { toApiClientError } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
@@ -17,7 +18,7 @@ import { useAuthStore } from '@/store/authStore';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from;
+  const from = safeReturnPath(location.state);
   const [formError, setFormError] = useState<string | null>(null);
 
   const {

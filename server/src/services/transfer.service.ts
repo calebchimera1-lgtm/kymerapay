@@ -21,6 +21,7 @@ import { postTransfer } from './ledger.service.js';
 import { assertAmountWithinLimits, assertWithinDailyLimit } from './limits.service.js';
 import { createNotification } from './notification.service.js';
 import { verifyPin } from './pin.service.js';
+import { qrService } from './qr.service.js';
 
 async function findRecipient(username: string, senderId: string) {
   const recipient = await prisma.user.findUnique({
@@ -72,6 +73,11 @@ export async function sendMoney(
   if (!sender.wallet) throw AppError.forbidden('This account cannot send money.');
   const recipient = await findRecipient(input.recipient, senderId);
 
+  if (input.qrCode) {
+    // Early check so a stale or mismatched QR fails before the PIN step.
+    await qrService.validateForPayment(prisma, input.qrCode, recipient.id, amount);
+  }
+
   await verifyPin(senderId, input.pin, context);
 
   const isBusiness = recipient.role === 'BUSINESS';
@@ -80,6 +86,11 @@ export async function sendMoney(
   const amountText = formatMoney(toAmountString(amount));
 
   return runInTransaction(async (tx) => {
+    // Authoritative check under lock; a fixed-amount QR is consumed here (single use).
+    const qrCodeId = input.qrCode
+      ? await qrService.validateForPayment(tx, input.qrCode, recipient.id, amount, { lock: true })
+      : undefined;
+
     const posted = await postTransfer(tx, {
       type: isBusiness ? 'BUSINESS_PAYMENT' : 'TRANSFER',
       fromWalletId: sender.wallet!.id,
@@ -88,6 +99,7 @@ export async function sendMoney(
       initiatorId: senderId,
       note: input.note ?? null,
       visibility,
+      ...(qrCodeId ? { qrCodeId } : {}),
       afterLock: () => assertWithinDailyLimit(tx, sender.wallet!.id, amount),
     });
 

@@ -19,6 +19,10 @@ import { RequestsPage } from '@/pages/requests/RequestsPage';
 import { NewSplitPage } from '@/pages/split/NewSplitPage';
 import { SplitDetailPage } from '@/pages/split/SplitDetailPage';
 import { SplitListPage } from '@/pages/split/SplitListPage';
+import { BusinessQrPage } from '@/pages/business/BusinessQrPage';
+import { MyQrPage } from '@/pages/qr/MyQrPage';
+import { PayLinkRedirect } from '@/pages/qr/PayLinkRedirect';
+import { ScanPage } from '@/pages/qr/ScanPage';
 import { GuestOnly, RequireAuth } from './guards';
 
 /** Personal-account pages, each behind the USER role guard. */
@@ -78,7 +82,19 @@ export const router = createBrowserRouter([
             ['app/split', <SplitListPage />],
             ['app/split/new', <NewSplitPage />],
             ['app/split/:id', <SplitDetailPage />],
+            ['app/pay', <SendMoneyPage audience="business" />],
+            ['app/scan', <ScanPage />],
+            ['app/qr', <MyQrPage />],
+            ['pay/:code', <PayLinkRedirect />],
           ]),
+          {
+            path: 'business/qr',
+            element: (
+              <RequireAuth roles={['BUSINESS']}>
+                <BusinessQrPage />
+              </RequireAuth>
+            ),
+          },
           {
             path: 'business',
             element: (

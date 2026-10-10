@@ -22,12 +22,27 @@ export function RequireAuth({ roles, children }: { roles?: Role[]; children: Rea
   return children;
 }
 
-/** Sign-in/registration pages: signed-in users go straight to their home. */
+/**
+ * Where to go after signing in. Only same-app paths are honoured ("/app/scan"),
+ * never "//evil.example" or absolute URLs, so this can't become an open redirect.
+ */
+export function safeReturnPath(state: unknown): string | null {
+  const from = (state as { from?: unknown } | null)?.from;
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') ? from : null;
+}
+
+/**
+ * Sign-in/registration pages: signed-in users go to the page they originally
+ * asked for (e.g. a scanned pay link), or else their home.
+ */
 export function GuestOnly({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
+  const location = useLocation();
 
   if (status === 'initializing') return <FullPageLoader />;
-  if (status === 'authenticated' && user) return <Navigate to={homePathFor(user.role)} replace />;
+  if (status === 'authenticated' && user) {
+    return <Navigate to={safeReturnPath(location.state) ?? homePathFor(user.role)} replace />;
+  }
   return children;
 }

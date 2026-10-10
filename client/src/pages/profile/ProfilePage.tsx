@@ -2,6 +2,7 @@ import { BUSINESS_CATEGORY_LABELS, formatKenyanPhone, type AuthUser } from '@app
 import { Lock, LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { MyQrPanel } from '@/components/qr/MyQrPanel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -41,6 +42,17 @@ export function ProfilePage() {
           <p className="text-sm text-fg-muted">Joined {formatMonthYear(user.createdAt)}</p>
         </CardBody>
       </Card>
+
+      {user.role !== 'ADMIN' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your payment QR</CardTitle>
+          </CardHeader>
+          <CardBody className="pb-8">
+            <MyQrPanel size={180} />
+          </CardBody>
+        </Card>
+      )}
 
       {user.business && (
         <Card>

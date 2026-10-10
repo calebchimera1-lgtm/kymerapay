@@ -14,7 +14,7 @@ export function Sidebar() {
   if (!user) return null;
 
   return (
-    <aside className="sticky top-[var(--banner-h)] hidden h-[calc(100dvh-var(--banner-h))] w-64 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+    <aside className="print:hidden sticky top-[var(--banner-h)] hidden h-[calc(100dvh-var(--banner-h))] w-64 shrink-0 flex-col border-r border-border bg-surface lg:flex">
       <div className="px-5 py-5">
         <Logo />
       </div>

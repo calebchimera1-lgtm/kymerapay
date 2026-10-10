@@ -21,6 +21,11 @@ export const createTransferSchema = z.object({
   amount: amountSchema,
   note: noteSchema,
   visibility: z.enum(VISIBILITIES).optional(),
+  /** Set when paying by scanning a QR code; the server checks it matches the recipient. */
+  qrCode: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{16,32}$/, 'Invalid QR code.')
+    .optional(),
   pin: z.string().regex(/^\d{4}$/, 'Enter your 4-digit PIN.'),
 });
 export type CreateTransferInput = z.input<typeof createTransferSchema>;
